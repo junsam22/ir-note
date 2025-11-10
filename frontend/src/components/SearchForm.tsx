@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import './SearchForm.css'
+import { API_BASE_URL } from '../config'
 
 interface SearchFormProps {
   onSearch: (stockCode: string) => void
@@ -28,7 +29,7 @@ export const SearchForm = ({ onSearch, loading, favorites = [] }: SearchFormProp
 
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`http://localhost:5001/api/search?query=${encodeURIComponent(query)}`)
+        const response = await fetch(`${API_BASE_URL}/search?query=${encodeURIComponent(query)}`)
         const data = await response.json()
         setSearchResults(data.results || [])
         setShowSuggestions(true)

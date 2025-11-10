@@ -3,6 +3,7 @@ import './App.css'
 import { SearchForm } from './components/SearchForm'
 import { MaterialsList } from './components/MaterialsList'
 import type { EarningsMaterial } from './types'
+import { API_BASE_URL } from './config'
 
 function App() {
   const [materials, setMaterials] = useState<EarningsMaterial[]>([])
@@ -22,7 +23,7 @@ function App() {
 
   const loadFavorites = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/favorites')
+      const response = await fetch(`${API_BASE_URL}/favorites`)
       const data = await response.json()
       setFavorites(data.favorites || [])
     } catch (err) {
@@ -36,13 +37,13 @@ function App() {
     try {
       if (isFavorite) {
         // 削除
-        await fetch(`http://localhost:5001/api/favorites/${currentStockCode}`, {
+        await fetch(`${API_BASE_URL}/favorites/${currentStockCode}`, {
           method: 'DELETE'
         })
         setIsFavorite(false)
       } else {
         // 追加
-        await fetch('http://localhost:5001/api/favorites', {
+        await fetch(`${API_BASE_URL}/favorites`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ stock_code: currentStockCode })
@@ -65,8 +66,8 @@ function App() {
     try {
       // 決算資料と時価総額を並行して取得
       const [earningsResponse, marketCapResponse] = await Promise.all([
-        fetch(`http://localhost:5001/api/earnings/${stockCode}`),
-        fetch(`http://localhost:5001/api/market-cap/${stockCode}`)
+        fetch(`${API_BASE_URL}/earnings/${stockCode}`),
+        fetch(`${API_BASE_URL}/market-cap/${stockCode}`)
       ])
 
       if (!earningsResponse.ok) {
