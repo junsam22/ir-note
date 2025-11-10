@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import './SearchForm.css'
 
 interface SearchFormProps {
