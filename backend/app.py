@@ -4,27 +4,16 @@ from earnings_scraper import get_earnings_materials, get_company_name
 import os
 import json
 import yfinance as yf
+from supabase import create_client, Client
 
 app = Flask(__name__)
 CORS(app)
 
-# お気に入りデータを保存するファイルパス
-FAVORITES_FILE = 'favorites.json'
+# Supabase設定
+SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://lvlqrnrsnuxqmxqvfyjd.supabase.co')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2bHFybnJzbnV4cW14cXZmeWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MjY5MjYsImV4cCI6MjA3ODQwMjkyNn0.S1krcgZVM0qiovk6ZxRSHaY3KLRWBfVw71h-qYwHnMw')
 
-def load_favorites():
-    """お気に入りをJSONファイルから読み込む"""
-    if os.path.exists(FAVORITES_FILE):
-        try:
-            with open(FAVORITES_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return []
-    return []
-
-def save_favorites(favorites):
-    """お気に入りをJSONファイルに保存する"""
-    with open(FAVORITES_FILE, 'w', encoding='utf-8') as f:
-        json.dump(favorites, f, ensure_ascii=False, indent=2)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def load_stock_master():
     """株式マスターデータを読み込む"""
@@ -144,9 +133,17 @@ def get_earnings(stock_code):
 def get_favorites():
     """お気に入り一覧を取得"""
     try:
-        favorites = load_favorites()
+        response = supabase.table('favorites').select('*').order('created_at', desc=True).execute()
+        favorites = [
+            {
+                "stock_code": fav['stock_code'],
+                "company_name": fav['company_name']
+            }
+            for fav in response.data
+        ]
         return jsonify({"favorites": favorites})
     except Exception as e:
+        print(f"お気に入り取得エラー: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/favorites', methods=['POST'])
@@ -159,44 +156,39 @@ def add_favorite():
         if not stock_code or len(stock_code) != 4 or not stock_code.isdigit():
             return jsonify({"error": "無効な証券コードです"}), 400
 
-        favorites = load_favorites()
-
-        # 既に登録されているかチェック
-        if any(f['stock_code'] == stock_code for f in favorites):
-            return jsonify({"message": "既にお気に入りに登録されています"}), 200
-
         # 企業名を取得
         company_name = get_company_name(stock_code)
 
-        # 追加
-        favorites.append({
-            "stock_code": stock_code,
-            "company_name": company_name,
-            "added_at": None  # フロントエンドで設定
-        })
-
-        save_favorites(favorites)
-        return jsonify({"message": "お気に入りに追加しました", "company_name": company_name}), 201
+        # Supabaseに追加（既に存在する場合はUNIQUE制約でエラーになるが、それは無視）
+        try:
+            supabase.table('favorites').insert({
+                "stock_code": stock_code,
+                "company_name": company_name
+            }).execute()
+            return jsonify({"message": "お気に入りに追加しました", "company_name": company_name}), 201
+        except Exception as insert_error:
+            # UNIQUE制約違反の場合は既に登録済み
+            if "duplicate" in str(insert_error).lower() or "unique" in str(insert_error).lower():
+                return jsonify({"message": "既にお気に入りに登録されています"}), 200
+            raise insert_error
 
     except Exception as e:
+        print(f"お気に入り追加エラー: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/favorites/<stock_code>', methods=['DELETE'])
 def remove_favorite(stock_code):
     """お気に入りから削除"""
     try:
-        favorites = load_favorites()
+        response = supabase.table('favorites').delete().eq('stock_code', stock_code).execute()
 
-        # 削除
-        new_favorites = [f for f in favorites if f['stock_code'] != stock_code]
-
-        if len(new_favorites) == len(favorites):
+        if not response.data:
             return jsonify({"error": "お気に入りに登録されていません"}), 404
 
-        save_favorites(new_favorites)
         return jsonify({"message": "お気に入りから削除しました"}), 200
 
     except Exception as e:
+        print(f"お気に入り削除エラー: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/market-cap/<stock_code>', methods=['GET'])
