@@ -39,29 +39,40 @@ def load_stock_master():
 
     # まずSupabaseから取得（最も確実）
     try:
-        print("Loading stocks from Supabase...")
+        print(f"Loading stocks from Supabase (URL: {SUPABASE_URL[:50]}...)...")
         all_stocks = []
         page_size = 1000
         offset = 0
+        start_time = time.time()
 
         while True:
-            response = supabase.table('stock_master').select('code, name').range(offset, offset + page_size - 1).execute()
-            if not response.data:
+            try:
+                response = supabase.table('stock_master').select('code, name').range(offset, offset + page_size - 1).execute()
+                if not response.data:
+                    print(f"  No data at offset {offset}")
+                    break
+                all_stocks.extend(response.data)
+                elapsed = time.time() - start_time
+                print(f"  Loaded {len(all_stocks)} stocks so far... (elapsed: {elapsed:.2f}s)")
+                if len(response.data) < page_size:
+                    print(f"  Last page (got {len(response.data)} records)")
+                    break
+                offset += page_size
+            except Exception as page_error:
+                print(f"  Error at offset {offset}: {page_error}")
                 break
-            all_stocks.extend(response.data)
-            print(f"  Loaded {len(all_stocks)} stocks so far...")
-            if len(response.data) < page_size:
-                break
-            offset += page_size
 
         if all_stocks:
-            print(f"✅ Loaded {len(all_stocks)} stocks from Supabase")
+            total_time = time.time() - start_time
+            print(f"✅ Loaded {len(all_stocks)} stocks from Supabase in {total_time:.2f}s")
             # キャッシュに保存
             _stock_master_cache = all_stocks
             _cache_timestamp = time.time()
             return all_stocks
+        else:
+            print("❌ No stocks loaded from Supabase")
     except Exception as e:
-        print(f"❌ Supabase読み込みエラー: {e}")
+        print(f"❌ Supabase読み込みエラー: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
 
