@@ -21,22 +21,11 @@ def load_stock_master():
     """
     株式マスターデータを読み込む
 
-    Vercel環境ではローカルJSONファイルを使用（高速・確実）
+    Supabaseから全件取得（ページネーション対応）
     """
-    # まずローカルJSONファイルを試みる（Vercel環境で最速）
+    # まずSupabaseから取得（最も確実）
     try:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        stock_master_path = os.path.join(current_dir, 'stock_master.json')
-        with open(stock_master_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            print(f"✅ Loaded {len(data)} stocks from local file")
-            return data
-    except Exception as e:
-        print(f"❌ ローカルファイル読み込みエラー: {e}")
-
-    # フォールバック: Supabaseから取得（遅いが確実）
-    try:
-        print("Falling back to Supabase...")
+        print("Loading stocks from Supabase...")
         all_stocks = []
         page_size = 1000
         offset = 0
@@ -46,6 +35,7 @@ def load_stock_master():
             if not response.data:
                 break
             all_stocks.extend(response.data)
+            print(f"  Loaded {len(all_stocks)} stocks so far...")
             if len(response.data) < page_size:
                 break
             offset += page_size
@@ -55,6 +45,20 @@ def load_stock_master():
             return all_stocks
     except Exception as e:
         print(f"❌ Supabase読み込みエラー: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # フォールバック: ローカルJSONファイル
+    try:
+        print("Falling back to local file...")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        stock_master_path = os.path.join(current_dir, 'stock_master.json')
+        with open(stock_master_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            print(f"✅ Loaded {len(data)} stocks from local file")
+            return data
+    except Exception as e:
+        print(f"❌ ローカルファイル読み込みエラー: {e}")
         return []
 
 def get_market_cap(stock_code):
