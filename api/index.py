@@ -95,6 +95,15 @@ def health_check():
     """ヘルスチェックエンドポイント"""
     return jsonify({"status": "ok"})
 
+@app.route('/api/debug', methods=['GET'])
+def debug_info():
+    """デバッグ情報エンドポイント"""
+    stock_master = load_stock_master()
+    return jsonify({
+        "total_stocks": len(stock_master),
+        "sample": stock_master[:5] if stock_master else []
+    })
+
 @app.route('/api/search', methods=['GET'])
 def search_companies():
     """
