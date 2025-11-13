@@ -2,8 +2,14 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import json
+import sys
 import yfinance as yf
 from supabase import create_client, Client
+
+# Add current directory to path for local imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 # Import local modules from api directory
 from earnings_scraper import get_earnings_materials, get_company_name
