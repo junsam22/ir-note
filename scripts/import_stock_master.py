@@ -1,5 +1,12 @@
 """
 株式マスターデータをSupabaseにインポートするスクリプト
+
+使用方法:
+    python scripts/import_stock_master.py
+
+環境変数:
+    SUPABASE_SERVICE_KEY: Supabase Service Role Key（推奨）
+    または SUPABASE_KEY: Supabase Anon Key
 """
 import json
 import os
@@ -8,7 +15,12 @@ from supabase import create_client, Client
 
 # 環境変数からSupabase接続情報を取得
 SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://lvlqrnrsnuxqmxqvfyjd.supabase.co')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2bHFybnJzbnV4cW14cXZmeWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MjY5MjYsImV4cCI6MjA3ODQwMjkyNn0.S1krcgZVM0qiovk6ZxRSHaY3KLRWBfVw71h-qYwHnMw')
+
+# Service Roleキーを優先的に使用（RLSをバイパスできる）
+SUPABASE_KEY = os.getenv(
+    'SUPABASE_SERVICE_KEY',
+    os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2bHFybnJzbnV4cW14cXZmeWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MjY5MjYsImV4cCI6MjA3ODQwMjkyNn0.S1krcgZVM0qiovk6ZxRSHaY3KLRWBfVw71h-qYwHnMw')
+)
 
 def import_stock_master():
     """株式マスターデータをSupabaseにインポート"""
