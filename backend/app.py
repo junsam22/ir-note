@@ -16,11 +16,31 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def load_stock_master():
-    """株式マスターデータを読み込む"""
+    """
+    株式マスターデータを読み込む
+
+    優先順位:
+    1. Supabaseから取得（本番環境推奨）
+    2. ローカルJSONファイル（フォールバック）
+    """
+    try:
+        # Supabaseから取得を試みる（全件取得するため count='exact' を使用）
+        # PostgRESTのデフォルトは1000件なので、limitを大きくする
+        response = supabase.table('stock_master').select('code, name').limit(10000).execute()
+        if response.data and len(response.data) > 0:
+            print(f"Loaded {len(response.data)} stocks from Supabase")
+            return response.data
+    except Exception as e:
+        print(f"Supabaseからの読み込みに失敗、ローカルファイルを使用: {e}")
+
+    # フォールバック: ローカルJSONファイルから読み込む
     try:
         with open('stock_master.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
+            data = json.load(f)
+            print(f"Loaded {len(data)} stocks from local file")
+            return data
+    except Exception as e:
+        print(f"株式マスターの読み込みエラー: {e}")
         return []
 
 def get_market_cap(stock_code):

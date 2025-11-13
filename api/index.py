@@ -26,8 +26,9 @@ def load_stock_master():
     2. ローカルJSONファイル（フォールバック）
     """
     try:
-        # Supabaseから取得を試みる
-        response = supabase.table('stock_master').select('code, name').execute()
+        # Supabaseから取得を試みる（全件取得するため limit を大きくする）
+        # PostgRESTのデフォルトは1000件なので、limitを10000に設定
+        response = supabase.table('stock_master').select('code, name').limit(10000).execute()
         if response.data and len(response.data) > 0:
             print(f"Loaded {len(response.data)} stocks from Supabase")
             return response.data
