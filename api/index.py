@@ -165,11 +165,23 @@ def search_companies():
         JSON形式の検索結果リスト
     """
     query = request.args.get('query', '').strip()
+    debug_mode = request.args.get('debug', '').lower() == 'true'
 
     if not query:
         return jsonify({"error": "検索キーワードを入力してください"}), 400
 
     stock_master = load_stock_master()
+
+    # デバッグモードの場合、詳細情報を返す
+    if debug_mode:
+        return jsonify({
+            "query": query,
+            "total_stocks_loaded": len(stock_master),
+            "sample_data": stock_master[:3] if stock_master else [],
+            "cache_status": "cached" if _stock_master_cache else "not_cached",
+            "supabase_url": SUPABASE_URL[:50] + "..." if SUPABASE_URL else None
+        })
+
     results = []
 
     # 証券コードで検索（完全一致）
