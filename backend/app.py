@@ -19,28 +19,39 @@ def load_stock_master():
     """
     株式マスターデータを読み込む
 
-    優先順位:
-    1. Supabaseから取得（本番環境推奨）
-    2. ローカルJSONファイル（フォールバック）
+    Supabaseから全件取得（ページネーション対応）
     """
     try:
-        # Supabaseから取得を試みる（全件取得するため count='exact' を使用）
-        # PostgRESTのデフォルトは1000件なので、limitを大きくする
-        response = supabase.table('stock_master').select('code, name').limit(10000).execute()
-        if response.data and len(response.data) > 0:
-            print(f"Loaded {len(response.data)} stocks from Supabase")
-            return response.data
+        # PostgRESTの制限(1000件/リクエスト)を回避するため、複数回に分けて取得
+        all_stocks = []
+        page_size = 1000
+        offset = 0
+
+        print("Loading stocks from Supabase...")
+        while True:
+            response = supabase.table('stock_master').select('code, name').range(offset, offset + page_size - 1).execute()
+            if not response.data:
+                break
+            all_stocks.extend(response.data)
+            print(f"  Loaded {len(all_stocks)} stocks so far...")
+            if len(response.data) < page_size:
+                break
+            offset += page_size
+
+        print(f"✅ Loaded {len(all_stocks)} stocks from Supabase")
+        return all_stocks
     except Exception as e:
-        print(f"Supabaseからの読み込みに失敗、ローカルファイルを使用: {e}")
+        print(f"❌ Supabase読み込みエラー: {e}")
 
     # フォールバック: ローカルJSONファイルから読み込む
     try:
+        print("Falling back to local file...")
         with open('stock_master.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-            print(f"Loaded {len(data)} stocks from local file")
+            print(f"✅ Loaded {len(data)} stocks from local file")
             return data
     except Exception as e:
-        print(f"株式マスターの読み込みエラー: {e}")
+        print(f"❌ ローカルファイル読み込みエラー: {e}")
         return []
 
 def get_market_cap(stock_code):
