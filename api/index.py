@@ -17,12 +17,26 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# グローバルキャッシュ（サーバーレス関数の起動中は保持される）
+_stock_master_cache = None
+_cache_timestamp = None
+
 def load_stock_master():
     """
     株式マスターデータを読み込む
 
     Supabaseから全件取得（ページネーション対応）
+    キャッシュを使用して高速化
     """
+    global _stock_master_cache, _cache_timestamp
+    import time
+
+    # キャッシュが有効な場合は再利用（5分間有効）
+    if _stock_master_cache is not None and _cache_timestamp is not None:
+        if time.time() - _cache_timestamp < 300:  # 5分
+            print(f"✅ Using cached data ({len(_stock_master_cache)} stocks)")
+            return _stock_master_cache
+
     # まずSupabaseから取得（最も確実）
     try:
         print("Loading stocks from Supabase...")
@@ -42,6 +56,9 @@ def load_stock_master():
 
         if all_stocks:
             print(f"✅ Loaded {len(all_stocks)} stocks from Supabase")
+            # キャッシュに保存
+            _stock_master_cache = all_stocks
+            _cache_timestamp = time.time()
             return all_stocks
     except Exception as e:
         print(f"❌ Supabase読み込みエラー: {e}")
@@ -100,11 +117,30 @@ def health_check():
 @app.route('/api/debug', methods=['GET'])
 def debug_info():
     """デバッグ情報エンドポイント"""
-    stock_master = load_stock_master()
-    return jsonify({
-        "total_stocks": len(stock_master),
-        "sample": stock_master[:5] if stock_master else []
-    })
+    import sys
+    import os
+
+    debug_data = {
+        "python_version": sys.version,
+        "cwd": os.getcwd(),
+        "env_vars": {
+            "SUPABASE_URL": SUPABASE_URL[:30] + "..." if SUPABASE_URL else None,
+            "SUPABASE_KEY": "present" if SUPABASE_KEY else "missing"
+        }
+    }
+
+    try:
+        stock_master = load_stock_master()
+        debug_data["total_stocks"] = len(stock_master)
+        debug_data["sample"] = stock_master[:3] if stock_master else []
+        debug_data["load_success"] = True
+    except Exception as e:
+        debug_data["load_success"] = False
+        debug_data["error"] = str(e)
+        import traceback
+        debug_data["traceback"] = traceback.format_exc()
+
+    return jsonify(debug_data)
 
 @app.route('/api/search', methods=['GET'])
 def search_companies():
