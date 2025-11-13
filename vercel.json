@@ -5,7 +5,7 @@
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "includeFiles": "api/stock_master.json"
+        "includeFiles": "stock_master.json"
       }
     },
     {

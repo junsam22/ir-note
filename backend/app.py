@@ -21,6 +21,7 @@ def load_stock_master():
 
     Supabaseから全件取得（ページネーション対応）
     """
+    print("DEBUG: load_stock_master() called")
     try:
         # PostgRESTの制限(1000件/リクエスト)を回避するため、複数回に分けて取得
         all_stocks = []
@@ -102,11 +103,13 @@ def search_companies():
         JSON形式の検索結果リスト
     """
     query = request.args.get('query', '').strip()
+    print(f"DEBUG: /api/search called with query='{query}'")
 
     if not query:
         return jsonify({"error": "検索キーワードを入力してください"}), 400
 
     stock_master = load_stock_master()
+    print(f"DEBUG: Loaded {len(stock_master)} stocks")
     results = []
 
     # 証券コードで検索（完全一致）
