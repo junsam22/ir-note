@@ -1,3 +1,6 @@
+-- Enable trigram extension for fuzzy text search (must be first)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Create stock_master table
 CREATE TABLE IF NOT EXISTS stock_master (
     id BIGSERIAL PRIMARY KEY,
@@ -13,9 +16,6 @@ CREATE INDEX IF NOT EXISTS idx_stock_master_code ON stock_master(code);
 
 -- Create index on name for search functionality
 CREATE INDEX IF NOT EXISTS idx_stock_master_name ON stock_master USING gin(name gin_trgm_ops);
-
--- Enable trigram extension for fuzzy text search
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE stock_master ENABLE ROW LEVEL SECURITY;
