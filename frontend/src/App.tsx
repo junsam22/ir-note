@@ -15,6 +15,7 @@ function App() {
   const [favorites, setFavorites] = useState<Array<{stock_code: string, company_name: string}>>([])
   const [isFavorite, setIsFavorite] = useState(false)
   const [marketCap, setMarketCap] = useState<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   // 初回レンダリング時にお気に入りをロード
   useEffect(() => {
@@ -194,9 +195,51 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <button
+          className="hamburger-menu"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="メニュー"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <h1>📊 IR Note</h1>
         <p>証券コードで決算説明会資料を検索</p>
       </header>
+
+      {/* サイドメニュー */}
+      <div className={`side-menu ${menuOpen ? 'open' : ''}`}>
+        <div className="side-menu-overlay" onClick={() => setMenuOpen(false)}></div>
+        <div className="side-menu-content">
+          <div className="side-menu-header">
+            <h2>メニュー</h2>
+            <button className="close-button" onClick={() => setMenuOpen(false)}>×</button>
+          </div>
+          <div className="side-menu-body">
+            <h3>お気に入り一覧</h3>
+            {favorites.length === 0 ? (
+              <p className="empty-message">お気に入りに登録された企業はありません</p>
+            ) : (
+              <ul className="favorites-menu-list">
+                {favorites.map(fav => (
+                  <li key={fav.stock_code}>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        handleSearch(fav.stock_code)
+                      }}
+                    >
+                      {fav.company_name}
+                      <span className="stock-code">{fav.stock_code}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
 
       <main className="app-main">
         {showFavorites ? (
