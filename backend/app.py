@@ -104,7 +104,14 @@ def get_market_cap(stock_code):
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """ヘルスチェックエンドポイント"""
-    return jsonify({"status": "ok"})
+    # デバッグ情報を追加
+    debug_info = {
+        "status": "ok",
+        "supabase_url": SUPABASE_URL,
+        "supabase_key_set": bool(SUPABASE_KEY),
+        "supabase_key_length": len(SUPABASE_KEY) if SUPABASE_KEY else 0
+    }
+    return jsonify(debug_info)
 
 @app.route('/api/search', methods=['GET'])
 def search_companies():
