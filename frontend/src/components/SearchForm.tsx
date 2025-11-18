@@ -5,7 +5,6 @@ import { API_BASE_URL } from '../config'
 interface SearchFormProps {
   onSearch: (stockCode: string) => void
   loading: boolean
-  favorites?: Array<{stock_code: string, company_name: string}>
 }
 
 interface SearchResult {
@@ -13,7 +12,7 @@ interface SearchResult {
   name: string
 }
 
-export const SearchForm = ({ onSearch, loading, favorites = [] }: SearchFormProps) => {
+export const SearchForm = ({ onSearch, loading }: SearchFormProps) => {
   const [query, setQuery] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])

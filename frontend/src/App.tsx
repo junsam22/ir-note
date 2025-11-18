@@ -241,7 +241,7 @@ function App() {
       </div>
 
       <main className="app-main">
-        <SearchForm onSearch={handleSearch} loading={loading} favorites={favorites} />
+        <SearchForm onSearch={handleSearch} loading={loading} />
 
         {error && (
           <div className="error-message">
