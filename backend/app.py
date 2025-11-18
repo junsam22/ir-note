@@ -20,8 +20,11 @@ def load_stock_master():
     株式マスターデータを読み込む
 
     Supabaseから全件取得（ページネーション対応）
+    Supabase接続エラー時はローカルファイルにフォールバック
     """
     print("DEBUG: load_stock_master() called")
+    
+    # まずSupabaseから取得を試みる
     try:
         # PostgRESTの制限(1000件/リクエスト)を回避するため、複数回に分けて取得
         all_stocks = []
@@ -39,18 +42,30 @@ def load_stock_master():
                 break
             offset += page_size
 
-        print(f"✅ Loaded {len(all_stocks)} stocks from Supabase")
-        return all_stocks
+        if all_stocks:
+            print(f"✅ Loaded {len(all_stocks)} stocks from Supabase")
+            return all_stocks
+        else:
+            print("⚠️  Supabaseからデータが取得できませんでした。ローカルファイルにフォールバックします。")
     except Exception as e:
-        print(f"❌ Supabase読み込みエラー: {e}")
+        error_msg = str(e)
+        print(f"❌ Supabase読み込みエラー: {error_msg}")
+        # テーブルが存在しない場合や接続エラーの場合
+        if 'table' in error_msg.lower() or 'PGRST205' in error_msg or 'connection' in error_msg.lower():
+            print("⚠️  Supabase接続エラーまたはテーブルが見つかりません。ローカルファイルにフォールバックします。")
 
     # フォールバック: ローカルJSONファイルから読み込む
     try:
         print("Falling back to local file...")
-        with open('stock_master.json', 'r', encoding='utf-8') as f:
+        # バックエンドディレクトリから相対パスで読み込む
+        stock_master_path = os.path.join(os.path.dirname(__file__), 'stock_master.json')
+        with open(stock_master_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             print(f"✅ Loaded {len(data)} stocks from local file")
             return data
+    except FileNotFoundError:
+        print(f"❌ ローカルファイルが見つかりません: {stock_master_path}")
+        return []
     except Exception as e:
         print(f"❌ ローカルファイル読み込みエラー: {e}")
         return []
@@ -178,7 +193,11 @@ def get_favorites():
         return jsonify({"favorites": favorites})
     except Exception as e:
         print(f"お気に入り取得エラー: {e}")
-        return jsonify({"error": str(e)}), 500
+        # テーブルが存在しない場合などは空配列を返す
+        if 'table' in str(e).lower() or 'PGRST205' in str(e):
+            print("⚠️  favoritesテーブルが見つかりません。空の配列を返します。")
+            return jsonify({"favorites": []})
+        return jsonify({"favorites": []})  # エラー時も空配列を返す
 
 @app.route('/api/favorites', methods=['POST'])
 def add_favorite():
@@ -201,6 +220,10 @@ def add_favorite():
             }).execute()
             return jsonify({"message": "お気に入りに追加しました", "company_name": company_name}), 201
         except Exception as insert_error:
+            # テーブルが存在しない場合
+            if 'table' in str(insert_error).lower() or 'PGRST205' in str(insert_error):
+                print("⚠️  favoritesテーブルが見つかりません。お気に入り機能は使用できません。")
+                return jsonify({"error": "お気に入り機能は現在使用できません"}), 503
             # UNIQUE制約違反の場合は既に登録済み
             if "duplicate" in str(insert_error).lower() or "unique" in str(insert_error).lower():
                 return jsonify({"message": "既にお気に入りに登録されています"}), 200
@@ -223,6 +246,10 @@ def remove_favorite(stock_code):
 
     except Exception as e:
         print(f"お気に入り削除エラー: {e}")
+        # テーブルが存在しない場合
+        if 'table' in str(e).lower() or 'PGRST205' in str(e):
+            print("⚠️  favoritesテーブルが見つかりません。")
+            return jsonify({"error": "お気に入り機能は現在使用できません"}), 503
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/market-cap/<stock_code>', methods=['GET'])

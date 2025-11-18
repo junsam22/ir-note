@@ -43,17 +43,21 @@ export const SearchForm = ({ onSearch, loading, favorites = [] }: SearchFormProp
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+    console.log('🔍 handleSubmit呼び出し:', { query, loading, searchResultsLength: searchResults.length })
+    
     setInputError(null)
     setShowSuggestions(false)
 
     // 入力バリデーション
     if (!query) {
+      console.log('❌ クエリが空です')
       setInputError('証券コードまたは企業名を入力してください')
       return
     }
 
     // 証券コード（4桁の数字）の場合
     if (/^\d{4}$/.test(query)) {
+      console.log('✅ 証券コードで検索:', query, 'onSearch関数:', typeof onSearch)
       onSearch(query)
       return
     }
@@ -61,15 +65,48 @@ export const SearchForm = ({ onSearch, loading, favorites = [] }: SearchFormProp
     // "企業名 (証券コード)" の形式から証券コードを抽出
     const codeMatch = query.match(/\((\d{4})\)/)
     if (codeMatch) {
+      console.log('✅ 企業名から証券コードを抽出:', codeMatch[1])
       onSearch(codeMatch[1])
       return
     }
 
     // 企業名の場合は検索結果から最初の証券コードを使用
     if (searchResults.length > 0) {
+      console.log('✅ 検索結果から証券コードを使用:', searchResults[0].code)
       onSearch(searchResults[0].code)
     } else {
-      setInputError('該当する企業が見つかりませんでした')
+      console.log('❌ 検索結果が見つかりません。企業名検索を実行します。')
+      // 企業名の場合は検索APIを呼び出す
+      const searchUrl = `${API_BASE_URL}/search?query=${encodeURIComponent(query)}`
+      console.log('📡 検索API呼び出し:', searchUrl)
+      
+      fetch(searchUrl)
+        .then(response => {
+          console.log('📥 検索APIレスポンス:', response.status, response.statusText)
+          if (!response.ok) {
+            throw new Error(`検索APIエラー: ${response.status} ${response.statusText}`)
+          }
+          return response.json()
+        })
+        .then(data => {
+          console.log('📊 検索APIデータ:', data)
+          if (data.results && data.results.length > 0) {
+            console.log('✅ 検索APIから結果を取得:', data.results[0])
+            onSearch(data.results[0].code)
+          } else {
+            console.log('❌ 検索結果が見つかりませんでした')
+            setInputError('該当する企業が見つかりませんでした')
+          }
+        })
+        .catch(err => {
+          console.error('❌ 検索APIエラー:', err)
+          const errorMessage = err instanceof Error 
+            ? err.message 
+            : typeof err === 'string' 
+              ? err 
+              : '検索中にエラーが発生しました'
+          setInputError(`検索中にエラーが発生しました: ${errorMessage}`)
+        })
     }
   }
 

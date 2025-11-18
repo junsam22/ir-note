@@ -24,10 +24,17 @@ function App() {
   const loadFavorites = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/favorites`)
+      if (!response.ok) {
+        // エラー時は空配列を設定（お気に入り機能が使えない場合でもアプリは動作する）
+        setFavorites([])
+        return
+      }
       const data = await response.json()
       setFavorites(data.favorites || [])
     } catch (err) {
       console.error('お気に入りの読み込みに失敗しました', err)
+      // エラー時は空配列を設定
+      setFavorites([])
     }
   }
 
@@ -57,6 +64,14 @@ function App() {
   }
 
   const handleSearch = async (stockCode: string) => {
+    console.log('🚀 handleSearch呼び出し:', stockCode, 'API_BASE_URL:', API_BASE_URL, '型:', typeof stockCode)
+    
+    if (!stockCode || typeof stockCode !== 'string') {
+      console.error('❌ 無効なstockCode:', stockCode)
+      setError('無効な証券コードです')
+      return
+    }
+    
     setCurrentStockCode(stockCode)
     setLoading(true)
     setError(null)
@@ -64,18 +79,74 @@ function App() {
     setMarketCap(null)
 
     try {
+      const earningsUrl = `${API_BASE_URL}/earnings/${stockCode}`
+      const marketCapUrl = `${API_BASE_URL}/market-cap/${stockCode}`
+      console.log('📡 APIリクエスト:', { earningsUrl, marketCapUrl })
+
       // 決算資料と時価総額を並行して取得
-      const [earningsResponse, marketCapResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/earnings/${stockCode}`),
-        fetch(`${API_BASE_URL}/market-cap/${stockCode}`)
-      ])
+      let earningsResponse: Response
+      let marketCapResponse: Response | null = null
+      
+      try {
+        const responses = await Promise.allSettled([
+          fetch(earningsUrl),
+          fetch(marketCapUrl)
+        ])
+        
+        // 決算資料のレスポンス
+        if (responses[0].status === 'fulfilled') {
+          earningsResponse = responses[0].value
+        } else {
+          const errorReason = responses[0].reason
+          const errorMessage = errorReason instanceof Error 
+            ? errorReason.message 
+            : typeof errorReason === 'string' 
+              ? errorReason 
+              : 'ネットワークエラーまたはサーバーエラーが発生しました'
+          console.error('❌ earnings API fetch error:', errorReason)
+          throw new Error(`決算資料の取得に失敗しました: ${errorMessage}`)
+        }
+        
+        // 時価総額のレスポンス（失敗しても続行）
+        if (responses[1].status === 'fulfilled') {
+          marketCapResponse = responses[1].value
+        } else {
+          console.warn('⚠️ market-cap API fetch error (無視):', responses[1].reason)
+        }
+      } catch (err) {
+        console.error('❌ API fetch error:', err)
+        throw err
+      }
+
+      console.log('📥 APIレスポンス:', {
+        earningsStatus: earningsResponse.status,
+        earningsOk: earningsResponse.ok,
+        marketCapStatus: marketCapResponse?.status || 'N/A',
+        marketCapOk: marketCapResponse?.ok || false
+      })
 
       if (!earningsResponse.ok) {
-        const errorData = await earningsResponse.json()
-        throw new Error(errorData.error || '決算資料の取得に失敗しました')
+        let errorMessage = '決算資料の取得に失敗しました'
+        try {
+          const errorData = await earningsResponse.json()
+          errorMessage = errorData.error || errorMessage
+          console.error('❌ 決算資料取得エラー:', errorData)
+        } catch (parseError) {
+          // JSONパースエラーの場合、ステータスコードから判断
+          if (earningsResponse.status === 404) {
+            errorMessage = '決算資料が見つかりませんでした'
+          } else if (earningsResponse.status === 500) {
+            errorMessage = 'サーバーエラーが発生しました。しばらく待ってから再度お試しください。'
+          } else {
+            errorMessage = `エラーが発生しました (ステータス: ${earningsResponse.status})`
+          }
+          console.error('❌ レスポンスパースエラー:', parseError, 'ステータス:', earningsResponse.status)
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await earningsResponse.json()
+      console.log('✅ 決算資料取得成功:', data.materials?.length, '件')
       setMaterials(data.materials)
 
       // 企業名を設定（最初の資料から取得）
@@ -84,9 +155,13 @@ function App() {
       }
 
       // 時価総額を設定
-      if (marketCapResponse.ok) {
-        const marketCapData = await marketCapResponse.json()
-        setMarketCap(marketCapData.market_cap_oku)
+      if (marketCapResponse && marketCapResponse.ok) {
+        try {
+          const marketCapData = await marketCapResponse.json()
+          setMarketCap(marketCapData.market_cap_oku)
+        } catch (err) {
+          console.warn('⚠️ 時価総額データのパースエラー:', err)
+        }
       }
 
       // お気に入りに登録されているかチェック
@@ -94,7 +169,23 @@ function App() {
       const isInFavorites = favorites.some(f => f.stock_code === stockCode)
       setIsFavorite(isInFavorites)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '予期しないエラーが発生しました')
+      console.error('❌ 検索エラー:', err)
+      console.error('❌ エラー詳細:', {
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        name: err instanceof Error ? err.name : typeof err
+      })
+      
+      let errorMessage = '予期しないエラーが発生しました'
+      if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = String(err.message)
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
