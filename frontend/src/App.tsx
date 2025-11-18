@@ -57,7 +57,7 @@ function App() {
         })
         setIsFavorite(true)
       }
-      loadFavorites()
+      await loadFavorites()
     } catch (err) {
       console.error('お気に入りの更新に失敗しました', err)
     }
