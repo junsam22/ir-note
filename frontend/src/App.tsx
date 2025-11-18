@@ -247,13 +247,13 @@ function App() {
                         時価総額: {marketCap.toLocaleString()}億円
                       </p>
                     )}
+                    <button
+                      className={`favorite-button ${isFavorite ? 'active' : ''}`}
+                      onClick={toggleFavorite}
+                    >
+                      {isFavorite ? '★ お気に入り登録済み' : '☆ お気に入りに追加'}
+                    </button>
                   </div>
-                  <button
-                    className={`favorite-button ${isFavorite ? 'active' : ''}`}
-                    onClick={toggleFavorite}
-                  >
-                    {isFavorite ? '★ お気に入り登録済み' : '☆ お気に入りに追加'}
-                  </button>
                 </div>
                 <p className="results-count">
                   {materials.length}件の資料が見つかりました
