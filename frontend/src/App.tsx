@@ -11,7 +11,6 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [companyName, setCompanyName] = useState<string>('')
   const [currentStockCode, setCurrentStockCode] = useState<string>('')
-  const [showFavorites, setShowFavorites] = useState(false)
   const [favorites, setFavorites] = useState<Array<{stock_code: string, company_name: string}>>([])
   const [isFavorite, setIsFavorite] = useState(false)
   const [marketCap, setMarketCap] = useState<number | null>(null)
@@ -204,7 +203,7 @@ function App() {
           <span></span>
           <span></span>
         </button>
-        <h1>📊 IR Note</h1>
+        <h1>IR Note</h1>
         <p>証券コードで決算説明会資料を検索</p>
       </header>
 
@@ -242,74 +241,49 @@ function App() {
       </div>
 
       <main className="app-main">
-        {showFavorites ? (
-          <div className="favorites-list">
-            <h2>お気に入り企業</h2>
-            {favorites.length === 0 ? (
-              <p>お気に入りに登録された企業はありません</p>
-            ) : (
-              <div className="favorites-grid">
-                {favorites.map(fav => (
-                  <div key={fav.stock_code} className="favorite-item">
-                    <h3>{fav.company_name}</h3>
-                    <button onClick={() => {
-                      setShowFavorites(false)
-                      handleSearch(fav.stock_code)
-                    }}>
-                      資料を見る
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+        <SearchForm onSearch={handleSearch} loading={loading} favorites={favorites} />
+
+        {error && (
+          <div className="error-message">
+            <p>{error}</p>
           </div>
-        ) : (
-          <>
-            <SearchForm onSearch={handleSearch} loading={loading} favorites={favorites} />
+        )}
 
-            {error && (
-              <div className="error-message">
-                <p>{error}</p>
-              </div>
-            )}
+        {loading && (
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>資料を取得中...</p>
+          </div>
+        )}
 
-            {loading && (
-              <div className="loading">
-                <div className="spinner"></div>
-                <p>資料を取得中...</p>
+        {!loading && materials.length > 0 && (
+          <div className="results">
+            <div className="results-header">
+              <div className="company-info">
+                <h2>{companyName}</h2>
+                {marketCap && (
+                  <p className="market-cap">
+                    時価総額: {marketCap.toLocaleString()}億円
+                  </p>
+                )}
+                <button
+                  className={`favorite-button ${isFavorite ? 'active' : ''}`}
+                  onClick={toggleFavorite}
+                >
+                  {isFavorite ? '★ お気に入り登録済み' : '☆ お気に入りに追加'}
+                </button>
               </div>
-            )}
-
-            {!loading && materials.length > 0 && (
-              <div className="results">
-                <div className="results-header">
-                  <div className="company-info">
-                    <h2>{companyName}</h2>
-                    {marketCap && (
-                      <p className="market-cap">
-                        時価総額: {marketCap.toLocaleString()}億円
-                      </p>
-                    )}
-                    <button
-                      className={`favorite-button ${isFavorite ? 'active' : ''}`}
-                      onClick={toggleFavorite}
-                    >
-                      {isFavorite ? '★ お気に入り登録済み' : '☆ お気に入りに追加'}
-                    </button>
-                  </div>
-                </div>
-                <p className="results-count">
-                  {materials.length}件の資料が見つかりました
-                </p>
-                <MaterialsList materials={materials} />
-              </div>
-            )}
-          </>
+            </div>
+            <p className="results-count">
+              {materials.length}件の資料が見つかりました
+            </p>
+            <MaterialsList materials={materials} />
+          </div>
         )}
       </main>
 
       <footer className="app-footer">
-        <p>© 2025 IR Note - 決算資料検索サービス</p>
+        <p>©freakapp</p>
       </footer>
     </div>
   )

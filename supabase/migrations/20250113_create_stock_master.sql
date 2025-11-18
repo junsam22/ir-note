@@ -21,12 +21,28 @@ CREATE INDEX IF NOT EXISTS idx_stock_master_name ON stock_master USING gin(name 
 ALTER TABLE stock_master ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow read access for all (public data)
-CREATE POLICY "Allow read access on stock_master" ON stock_master
-    FOR SELECT
-    USING (true);
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE tablename = 'stock_master'
+        AND policyname = 'Allow read access on stock_master'
+    ) THEN
+        CREATE POLICY "Allow read access on stock_master" ON stock_master
+            FOR SELECT
+            USING (true);
+    END IF;
+END $$;
 
 -- Create policy to allow insert/update for service role only
-CREATE POLICY "Allow insert/update for service role" ON stock_master
-    FOR ALL
-    USING (auth.role() = 'service_role')
-    WITH CHECK (auth.role() = 'service_role');
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE tablename = 'stock_master'
+        AND policyname = 'Allow insert/update for service role'
+    ) THEN
+        CREATE POLICY "Allow insert/update for service role" ON stock_master
+            FOR ALL
+            USING (auth.role() = 'service_role')
+            WITH CHECK (auth.role() = 'service_role');
+    END IF;
+END $$;

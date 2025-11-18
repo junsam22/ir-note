@@ -115,12 +115,6 @@ export const SearchForm = ({ onSearch, loading, favorites = [] }: SearchFormProp
     setShowSuggestions(false)
   }
 
-  // お気に入り企業を表示（最大4件）
-  const examples = favorites.slice(0, 4).map(fav => ({
-    code: fav.stock_code,
-    name: fav.company_name
-  }))
-
   return (
     <div className="search-form-container">
       <form onSubmit={handleSubmit} className="search-form">
@@ -158,26 +152,6 @@ export const SearchForm = ({ onSearch, loading, favorites = [] }: SearchFormProp
           {loading ? '検索中...' : '検索'}
         </button>
       </form>
-
-      {examples.length > 0 && (
-        <div className="examples">
-          <p>お気に入り企業:</p>
-          <div className="example-buttons">
-            {examples.map((example) => (
-              <button
-                key={example.code}
-                onClick={() => {
-                  onSearch(example.code)
-                }}
-                className="example-button"
-                disabled={loading}
-              >
-                {example.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
